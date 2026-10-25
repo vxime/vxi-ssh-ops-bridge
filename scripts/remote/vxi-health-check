@@ -1,0 +1,5 @@
+#!/bin/sh
+# Demonstration only: proves the remote allowlisted script can run.
+# Implement application-specific health checks locally before production use.
+set -eu
+printf '{"health":"PASS","service":"UNKNOWN","storage":"UNKNOWN"}\n'

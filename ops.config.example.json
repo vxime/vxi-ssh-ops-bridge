@@ -1,0 +1,12 @@
+{
+  "mode": "disabled",
+  "targets": {
+    "lab": {
+      "host": "example.invalid",
+      "user": "demo",
+      "port": 22,
+      "identityFile": "/ABSOLUTE/LOCAL/PATH/TO/SSH_KEY",
+      "knownHostsFile": "/ABSOLUTE/LOCAL/PATH/TO/VERIFIED_KNOWN_HOSTS"
+    }
+  }
+}

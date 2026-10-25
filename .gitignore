@@ -1,0 +1,13 @@
+node_modules/
+ops.config.json
+*.key
+*.pem
+*.p12
+*.pfx
+known_hosts
+known_hosts.*
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
