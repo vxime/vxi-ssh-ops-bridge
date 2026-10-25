@@ -58,7 +58,9 @@ AllowTcpForwarding no
 X11Forwarding no
 PermitUserRC no
 StrictModes no
-UsePAM no
+# GitHub-hosted runner has password-locked service user; PAM permits
+# public-key-only login while password and challenge auth remain disabled.
+UsePAM yes
 LogLevel VERBOSE
 ForceCommand /usr/local/bin/vxi-health-check
 CFG
