@@ -23,6 +23,22 @@ test('strict target/host validation forbids option and shell injection', () => {
   assert.throws(() => validateConfig({ mode: 'read_only', targets: { production: target } }), /TARGET_INVALID/);
 });
 
+test('SSH host and user are required strings', () => {
+  const missingHost = { ...target };
+  delete missingHost.host;
+  assert.throws(() => validateConfig({ mode: 'read_only', targets: { lab: missingHost } }), /HOST_INVALID/);
+  const missingUser = { ...target };
+  delete missingUser.user;
+  assert.throws(() => validateConfig({ mode: 'read_only', targets: { lab: missingUser } }), /SSH_USER_INVALID/);
+
+  for (const invalidHost of [null, 127, ['example.invalid']]) {
+    assert.throws(() => validateConfig({ mode: 'read_only', targets: { lab: { ...target, host: invalidHost } } }), /HOST_INVALID/);
+  }
+  for (const invalidUser of [null, ['demo']]) {
+    assert.throws(() => validateConfig({ mode: 'read_only', targets: { lab: { ...target, user: invalidUser } } }), /SSH_USER_INVALID/);
+  }
+});
+
 test('SSH invocation has a fixed remote script and security options', () => {
   const inv = buildSshInvocation(target);
   assert.equal(inv.command, 'ssh');
