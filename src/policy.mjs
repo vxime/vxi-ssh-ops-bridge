@@ -19,8 +19,8 @@ export function validateConfig(config) {
   for (const [label, target] of entries) {
     if (!LABEL_RE.test(label) || !target || typeof target !== 'object' || Array.isArray(target)) throw new Error('TARGET_INVALID');
     if (Object.keys(target).some(k => !ALLOWED_TARGET_KEYS.has(k))) throw new Error('TARGET_UNKNOWN_FIELD');
-    if (!HOST_RE.test(target.host) || target.host.startsWith('-') || target.host.includes('..')) throw new Error('HOST_INVALID');
-    if (!USER_RE.test(target.user)) throw new Error('SSH_USER_INVALID');
+    if (typeof target.host !== 'string' || !HOST_RE.test(target.host) || target.host.startsWith('-') || target.host.includes('..')) throw new Error('HOST_INVALID');
+    if (typeof target.user !== 'string' || !USER_RE.test(target.user)) throw new Error('SSH_USER_INVALID');
     if (!Number.isInteger(target.port) || target.port < 1 || target.port > 65535) throw new Error('PORT_INVALID');
     if (typeof target.identityFile !== 'string' || !path.isAbsolute(target.identityFile)) throw new Error('IDENTITY_PATH_INVALID');
     if (typeof target.knownHostsFile !== 'string' || !path.isAbsolute(target.knownHostsFile)) throw new Error('KNOWN_HOSTS_PATH_INVALID');
