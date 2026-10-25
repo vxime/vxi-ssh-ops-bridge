@@ -59,7 +59,7 @@ X11Forwarding no
 PermitUserRC no
 StrictModes no
 UsePAM no
-LogLevel ERROR
+LogLevel VERBOSE
 ForceCommand /usr/local/bin/vxi-health-check
 CFG
 
@@ -89,7 +89,38 @@ const target = {
 writeFileSync(path.join(directory, 'config.json'), JSON.stringify({ mode: 'read_only', targets: { lab: target } }));
 JS
 
-node bin/vxi-ops.mjs health --config "$tmp/config.json" --target lab > "$tmp/result.json"
+if ! node bin/vxi-ops.mjs health --config "$tmp/config.json" --target lab > "$tmp/result.json"; then
+  echo 'DIAG: LOOPBACK_HEALTH_CALL_FAILED' >&2
+  if sudo grep -qi 'account is locked' "$tmp/sshd.log"; then
+    echo 'DIAG: RUNNER_ACCOUNT_LOCKED' >&2
+  elif sudo grep -qi 'authentication refused' "$tmp/sshd.log"; then
+    echo 'DIAG: AUTHENTICATION_REFUSED' >&2
+  elif sudo grep -qi 'not allowed' "$tmp/sshd.log"; then
+    echo 'DIAG: USER_NOT_ALLOWED' >&2
+  elif sudo grep -qi 'bad ownership or modes' "$tmp/sshd.log"; then
+    echo 'DIAG: SSHD_FILE_PERMISSIONS' >&2
+  else
+    echo 'DIAG: SSH_TRANSPORT_OR_CLIENT_UNCLASSIFIED' >&2
+  fi
+  node --input-type=module - "$tmp/config.json" <<'JS'
+import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { buildSshInvocation } from './src/policy.mjs';
+const config = JSON.parse(await readFile(process.argv[2], 'utf8'));
+const inv = buildSshInvocation(config.targets.lab);
+const attempt = spawnSync(inv.command, inv.args, { encoding: 'utf8', timeout: 10000 });
+const msg = attempt.stderr || '';
+const classification =
+  /host key verification failed/i.test(msg) ? 'HOST_KEY_VERIFICATION' :
+  /permission denied.*publickey/i.test(msg) ? 'PUBLIC_KEY_AUTHENTICATION' :
+  /connection refused/i.test(msg) ? 'CONNECTION_REFUSED' :
+  /bad configuration option|unsupported option|unknown option|bad command-line option|invalid argument/i.test(msg) ? 'UNSUPPORTED_SSH_OPTION' :
+  /warning: permanently added/i.test(msg) ? 'HOST_KEY_ACCEPTANCE_UNEXPECTED' :
+  'UNCLASSIFIED';
+process.stderr.write('DIAG: SSH_CLIENT_' + classification + '\n');
+JS
+  exit 1
+fi
 node - "$tmp/result.json" <<'JS'
 const { readFileSync } = require('node:fs');
 const assert = require('node:assert/strict');
