@@ -62,7 +62,9 @@ StrictModes no
 # public-key-only login while password and challenge auth remain disabled.
 UsePAM yes
 LogLevel VERBOSE
-ForceCommand /usr/local/bin/vxi-health-check
+# Deliberately no ForceCommand in this isolated fixture: the CLI must
+# actually request the expected fixed script, rather than have sshd
+# substitute it. The server listens on loopback with disposable keys only.
 CFG
 
 sudo install -m 0755 scripts/remote/vxi-health-check /usr/local/bin/vxi-health-check
@@ -178,4 +180,4 @@ assert.deepEqual(denied.map(x => x.id), [11, 12]);
 assert.ok(denied.every(x => x.error?.code === -32602));
 JS
 
-echo 'PASS: disposable SSH localhost auth, fixed remote script, MCP, wrong-host-key and forbidden-command checks; cleanup trap installed.'
+echo 'PASS: disposable SSH localhost auth, actual client-requested fixed remote script, MCP, wrong-host-key and forbidden-command checks; cleanup trap installed.'
