@@ -23,13 +23,48 @@ chmod 700 "$tmp"
 server_pid=''
 installed=0
 cleanup() {
+  local original_status=$?
+  local cleanup_failed=0
+
+  # Prefer the PID recorded by sshd itself; sudo's background PID is not
+  # assumed to be the long-lived daemon PID.
+  if [[ -f "$tmp/sshd.pid" ]]; then
+    server_pid="$(cat "$tmp/sshd.pid" 2>/dev/null || true)"
+  fi
   if [[ -n "$server_pid" ]]; then
     sudo kill "$server_pid" >/dev/null 2>&1 || true
+    for _ in $(seq 1 20); do
+      if ! sudo kill -0 "$server_pid" >/dev/null 2>&1; then break; fi
+      sleep 0.1
+    done
+    if sudo kill -0 "$server_pid" >/dev/null 2>&1; then
+      sudo kill -KILL "$server_pid" >/dev/null 2>&1 || true
+      sleep 0.1
+      if sudo kill -0 "$server_pid" >/dev/null 2>&1; then
+        echo 'CLEANUP_FAIL: SSHD_PROCESS_REMAINS' >&2
+        cleanup_failed=1
+      fi
+    fi
   fi
+
   if [[ "$installed" -eq 1 ]]; then
-    sudo rm -f /usr/local/bin/vxi-health-check
+    sudo rm -f /usr/local/bin/vxi-health-check || cleanup_failed=1
+    if sudo test -e /usr/local/bin/vxi-health-check; then
+      echo 'CLEANUP_FAIL: REMOTE_PROBE_REMAINS' >&2
+      cleanup_failed=1
+    fi
   fi
-  rm -rf "$tmp"
+
+  rm -rf "$tmp" || cleanup_failed=1
+  if [[ -e "$tmp" ]]; then
+    echo 'CLEANUP_FAIL: TEMP_DIRECTORY_REMAINS' >&2
+    cleanup_failed=1
+  fi
+
+  if [[ "$cleanup_failed" -ne 0 ]]; then
+    exit 1
+  fi
+  return "$original_status"
 }
 trap cleanup EXIT
 
